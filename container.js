@@ -9,3 +9,15 @@ export function connect(
 
   return connectHOC(mapStateToPops, mapDispatchToProps)
 }
+
+function connectHOC(mapStateToPops, mapDispatchToProps) {
+
+  return function wrapWithConnect(WrappedComponent) {
+
+    class Connect extends Component {
+      componentDidMount() {
+        store.subscribe(this.onStateChange.bind(this))
+      }
+    }
+  }
+}
