@@ -1,4 +1,4 @@
-import React, { PropTypes } from 'react';
+import PropTypes from 'prop-types';
 
 const storeShape = PropTypes.shape({
   subscribe: PropTypes.func.isRequired,
@@ -45,26 +45,47 @@ export function connect(
   return connectHOC(mapStateToPops, mapDispatchToProps)
 }
 
-function connectHOC(mapStateToPops, mapDispatchToProps) {
+function connectHOC(
+  mapStateToPops, mapDispatchToProps) {
 
   return function wrapWithConnect(WrappedComponent) {
 
     class Connect extends Component {
-      componentDidMount() {
-        store.subscribe(this.onStateChange.bind(this))
-      }
+      constructor(props, context) {
+        super(props, context)
+        this.store = context.store;
 
-      onStateChange() {
-        this.setState({})
-      }
+        const parentSub = this.context.parentSub;
 
-      render() {
-        const mergedProps = stateAndDispatchMerge();
-
-        return React.createElement(WrappedComponent, mergedProps)
+        this.subscription = new Subscription(this.store, parentSub, this.onStateChange.bind(this))
       }
-    }
 
     return Connect;
   }
 }
+
+// version 1
+// function connectHOC(
+//   mapStateToPops, mapDispatchToProps) {
+//
+//   return function wrapWithConnect(WrappedComponent) {
+//
+//     class Connect extends Component {
+//       componentDidMount() {
+//         store.subscribe(this.onStateChange.bind(this))
+//       }
+//
+//       onStateChange() {
+//         this.setState({})
+//       }
+//
+//       render() {
+//         const mergedProps = stateAndDispatchMerge();
+//
+//         return React.createElement(WrappedComponent, mergedProps)
+//       }
+//     }
+//
+//     return Connect;
+//   }
+// }
