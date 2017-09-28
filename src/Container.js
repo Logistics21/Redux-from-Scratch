@@ -11,6 +11,27 @@ const subscriptionShape = PropTypes.shape({
   notifyNestedSubs: PropTypes.func.isRequired
 })
 
+class Provider extends React.Component {
+  constructor(props, context) {
+    super(props, context);
+    this.store = props.store;
+  }
+
+
+  getChildContext() {
+    return { store: this.store, parentSub: null }
+  }
+
+  render() {
+    return React.Children.only(this.props.children)
+  }
+}
+
+Provider.childContextTypes = {
+  store: storeShape,
+  parentSub: subscriptionShape
+}
+
 
 HOC = connect(mapStateToPops, mapDispatchToProps)
 
