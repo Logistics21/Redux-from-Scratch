@@ -60,6 +60,41 @@ function connectHOC(
         this.subscription = new Subscription(this.store, parentSub, this.onStateChange.bind(this))
       }
 
+      getChildContext() {
+        return {
+          parentSub: this.subscription;
+        }
+      }
+
+      componentDidMount() {
+        this.subscription.trySubscribe();
+        // store.subscribe(this.onStateChange.bind(this))
+      }
+
+      onStateChange() {
+        this.setState({})
+      }
+
+      componentDidUpdate() {
+        this.subscription.notifyNestedSubs();
+      }
+
+      render() {
+        const mergedProps = stateAndDispatchMerge();
+
+        return React.createElement(WrappedComponent, mergedProps)
+      }
+    }
+
+    Connect.contextTypes = {
+      store: storeShape,
+      parentSub: subscriptionShape,
+    }
+
+    Connect.childContextTypes = {
+      parentSub: subscriptionShape,
+    }
+
     return Connect;
   }
 }
