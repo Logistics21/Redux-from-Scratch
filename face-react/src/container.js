@@ -18,6 +18,18 @@ function connectHOC(mapStateToPops, mapDispatchToProps) {
       componentDidMount() {
         store.subscribe(this.onStateChange.bind(this))
       }
+
+      onStateChange() {
+        this.setState({})
+      }
+
+      render() {
+        const mergedProps = stateAndDispatchMerge();
+
+        return React.createElement(WrappedComponent, mergedProps)
+      }
     }
+
+    return Connect;
   }
 }
