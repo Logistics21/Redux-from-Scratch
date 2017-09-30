@@ -70,30 +70,33 @@ function connectHOC(mapStateToProps, mapDispatchToProps) {
   return function wrapWithConnect(WrappedComponent) {
 
     // Connect is the container component that returns the presentational component
-    // it has two main functions
+    // originally it had two main functions, now it has 2 more
     // 1.) it subscribes to the store with the callback onStateChange
     // when onStateChange is called it calls setState with a dummy object
     // 2.) it calls mSTP and mDTP functions to get the mergedProps to be injected into
     // the wrapped component
+    // 3.) in the constructor is uses parentSub to configure its own subscription
+    // 4.) in getChildContext it replaces the parent subscription with it's own so
+    // its children can get access to it
     class Connect extends React.Component {
       constructor(props, context) {
         super(props, context)
         this.store = context.store;
 
+        // get parents' Subscription instance from context
         const parentSub = this.context.parentSub;
 
+        //init own Subscription instance based on parents' Subscription
         this.subscription = new Subscription(this.store, parentSub, this.onStateChange.bind(this))
       }
 
       getChildContext() {
-        return {
-          parentSub: this.subscription;
-        }
+        // replace parentSub context for child component w/ own Subscription instance
+        return { parentSub: this.subscription }
       }
 
       componentDidMount() {
         this.subscription.trySubscribe();
-        // store.subscribe(this.onStateChange.bind(this))
       }
 
       onStateChange() {
@@ -103,6 +106,7 @@ function connectHOC(mapStateToProps, mapDispatchToProps) {
       }
 
       componentDidUpdate() {
+        //after the current component get updated, please notify the nested subscription
         this.subscription.notifyNestedSubs();
       }
 
@@ -114,11 +118,13 @@ function connectHOC(mapStateToProps, mapDispatchToProps) {
       }
     }
 
+    // the context exposed to the Connect container itself
     Connect.contextTypes = {
       store: storeShape,
       parentSub: subscriptionShape,
     }
 
+    // replace the context of parentSub for the child component
     Connect.childContextTypes = {
       parentSub: subscriptionShape,
     }
