@@ -22,6 +22,22 @@ const subscriptionShape = PropTypes.shape({
 })
 
 
+// <Provider>
+//   <Container1>
+//     <Container2 />
+//   </Container1>
+// </Provider>
+
+// in the above example Container2 mounts first, triggering trySubscribe
+// this method tries to subscribe the callback func (onStateChange) to its
+// parent's (Container1) subscription by calling addNestedSub. in addNestedSub
+// the subscription of Container1 will first call its own trySubscribe
+// however since the root container does not have an ancestor its parentSub will
+// initialize to null from the Provider, thus it will subscribe its own onStateChange
+// to the store directly. This recursive process ensures that only the onStateChange
+// callback of the root container subscribes to the store and the following onStateChange
+// will subscribe to the parentSub of each component
+
 class Subscription {
   constructor(store, parentSub, onStateChange) {
     this.store = store;                   //global store from context
@@ -31,6 +47,7 @@ class Subscription {
     this.listeners = [];                  // nested subscription listeners subscribe here
   }
 
+  // defined in subscriptionShape
   notifyNestedSubs() {
     this.listeners.forEach(listener => listener())
   }
@@ -40,14 +57,25 @@ class Subscription {
     if (!this.subscribed) {
       if (this.parentSub !== null) {
         // if has parentSub (from context), subscribe to parentSub
-        this.parentSub.addNestSub(this.onStateChange)
+        this.parentSub.addNestedSub(this.onStateChange);
       }
     } else {
       // if root component just subscribe directly to store
-      this.store.subscribe(this.onStateChange)
+      this.store.subscribe(this.onStateChange);
     }
 
     this.subscribed = true;
+  }
+
+  // add nested subscription to itself
+  addNestedSub(listener) {
+    // MUST make sure it is subscribed, or order can't be maintained
+    this.trySubscribe() {
+      // found in subscriptionShape
+
+      // Now subscribe the nested listener to it Subscription's own listener collection
+      this.listeners.push(listener);
+    }
   }
 }
 
