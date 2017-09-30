@@ -12,15 +12,45 @@ const storeShape = PropTypes.shape({
   getState: PropTypes.func.isRequired
 })
 
+
 // instead each container component maintains its own subscription and notification
 // system, thus the doesn't notify every container, but every container notifies the
 // children below it
-
-
 const subscriptionShape = PropTypes.shape({
   trySubscribe: PropTypes.func.isRequired,
   notifyNestedSubs: PropTypes.func.isRequired
 })
+
+
+class Subscription {
+  constructor(store, parentSub, onStateChange) {
+    this.store = store;                   //global store from context
+    this.parentSub = parentSub;           //parentSub from context
+    this.onStateChange = onStateChange;   //its own listener
+    this.subscribed = false;              //flag for testing if it has subscribed
+    this.listeners = [];                  // nested subscription listeners subscribe here
+  }
+
+  notifyNestedSubs() {
+    this.listeners.forEach(listener => listener())
+  }
+
+  trySubscribe() {
+    //if not yet subscribed
+    if (!this.subscribed) {
+      if (this.parentSub !== null) {
+        // if has parentSub (from context), subscribe to parentSub
+        this.parentSub.addNestSub(this.onStateChange)
+      }
+    } else {
+      // if root component just subscribe directly to store
+      this.store.subscribe(this.onStateChange)
+    }
+
+    this.subscribed = true;
+  }
+}
+
 
 // This component exposes a context for the child components to access the redux store
 // besides the store object Provide also provides another context variable called parentSub
@@ -99,6 +129,12 @@ function connectHOC(mapStateToProps, mapDispatchToProps) {
         this.subscription.trySubscribe();
       }
 
+      // when oSC gets called it resets itself, then uses its own subscription to notify
+      // nested subscriptions by calling notifyNestedSubs
+      // this is how it maintains the order of notification
+
+      // onStateChange => setState => componentDidUpdate => notifyNestedSubs => recursively
+      // updates the descendants' stores by calling their onStateChange
       onStateChange() {
         // setState should be used over forceUpdate as it checks shouldComponentUpdate
         // which prevents unnesccesary re-render
