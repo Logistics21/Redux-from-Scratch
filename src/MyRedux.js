@@ -254,11 +254,19 @@ function connectHOC(mapStateToProps, mapDispatchToProps) {
       }
 
       notifyNestedSubsOnComponentDidUpdate() {
+        this.componentDidUpdate = undefined; // umimplement it to avoid notification due to
+        // normal update(e.g. parent's re-render)
+        this.subscription.notifyNestedSubs();
       }
 
       // data source 2: ownProps change
       componentWillReceiveProps(nextProps) {
         this.selectorProps = this.selector(store.state, nextProps)
+      }
+
+      shouldComponentUpdate() {
+        //rely on stateful selector, prevent unnesccesary re-render
+        return this.selector.shouldComponentUpdate;
       }
 
       componentDidUpdate() {
