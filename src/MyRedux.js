@@ -139,6 +139,35 @@ function simpleSelector(nextState, nextOwnProps) {
 // there is no easy way to determine when to re-render
 
 
+// the mapping function is unoptimized and can be changed in two ways
+// 1.) memoize selector with a factory function to provide scope for caching the last
+// input and output t0 be compared to last input using shallowEqual and strict equal
+// if current input is both then just return previous output
+//
+// 2.) make the selector stateful
+// because the only source of truth for the wrappedComponentis mergedProps calculated
+// by the selector, and the selector has full control over the mergedProps you can
+// assign shouldComponentUpdate checking to the selector itself
+
+function makeStatefulSelector(selector, store) {
+  //wrap the selector in an object that tracks its results between runs
+
+  const statefulSelector = {
+    run: function (props) {
+      const nextProps = selector(store.getState(), props);
+      // but it sets shouldComponentUpdate to true if it is different from previous one
+      if (nextProps !== statefulSelector.props) {
+        //update info for React
+        statefulSelector.shouldComponentUpdate = true;
+        statefulSelector.props = nextProps;
+      }
+    }
+  }
+
+  return statefulSelector;
+}
+
+
 // the other job of the container component is to inject props into the wrappedComponent
 //these props are generated one of three ways.
 // 1.) ownProps, its own props received as JSX <Container prop1={abc} prop2={def} />
@@ -182,7 +211,11 @@ function connectHOC(mapStateToProps, mapDispatchToProps) {
 
       initSelector() {
         // selector: { reduxStore.state + ownProps } => injected mergedProps
-        this.selector = simpleSelector;
+        // this.selector = simpleSelector;
+        const selector = selectorFactory(this.store.dispatch, mapStateToProps, mapDispatchToProps)
+        this.selector = makeStatefulSelector(selector, this.store);
+        // init the mergedProps for initial render
+        this.selector.run(this.props);
       }
 
       getChildContext() {
@@ -203,10 +236,24 @@ function connectHOC(mapStateToProps, mapDispatchToProps) {
 
       // data source 1: store state change
       onStateChange() {
-        this.selectorProps = this.selector(store.state, nextProps)
-        // setState should be used over forceUpdate as it checks shouldComponentUpdate
-        // which prevents unnesccesary re-render
-        this.setState({})
+        // this.selectorProps = this.selector(store.state, nextProps)
+        // line above replaced
+        this.selector.run(this.props);
+        if (!this.selector.shouldComponentUpdate) {
+          // if it does not get a re-render, we still need to notify the nested subscription
+          this.subscription.notifyNestedSubs();
+        } else {
+          this.componentDidUpdate.this.notifyNestedSubsOnComponentDidUpdate;
+          this.setState({})
+
+
+          // setState should be used over forceUpdate as it checks shouldComponentUpdate
+          // which prevents unnesccesary re-render
+          //setState moved into if else
+        }
+      }
+
+      notifyNestedSubsOnComponentDidUpdate() {
       }
 
       // data source 2: ownProps change
@@ -229,7 +276,6 @@ function connectHOC(mapStateToProps, mapDispatchToProps) {
       }
     }
 
-    // the mapping function is unoptimized
 
     // the context exposed to the Connect container itself
     Connect.contextTypes = {
