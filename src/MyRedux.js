@@ -170,12 +170,19 @@ function connectHOC(mapStateToProps, mapDispatchToProps) {
       constructor(props, context) {
         super(props, context)
         this.store = context.store;
+        this.initSelector();
+
 
         // get parents' Subscription instance from context
         const parentSub = this.context.parentSub;
 
         //init own Subscription instance based on parents' Subscription
         this.subscription = new Subscription(this.store, parentSub, this.onStateChange.bind(this))
+      }
+
+      initSelector() {
+        // selector: { reduxStore.state + ownProps } => injected mergedProps
+        this.selector = simpleSelector;
       }
 
       getChildContext() {
@@ -193,10 +200,18 @@ function connectHOC(mapStateToProps, mapDispatchToProps) {
 
       // onStateChange => setState => componentDidUpdate => notifyNestedSubs => recursively
       // updates the descendants' stores by calling their onStateChange
+
+      // data source 1: store state change
       onStateChange() {
+        this.selectorProps = this.selector(store.state, nextProps)
         // setState should be used over forceUpdate as it checks shouldComponentUpdate
         // which prevents unnesccesary re-render
         this.setState({})
+      }
+
+      // data source 2: ownProps change
+      componentWillReceiveProps(nextProps) {
+        this.selectorProps = this.selector(store.state, nextProps)
       }
 
       componentDidUpdate() {
@@ -206,11 +221,15 @@ function connectHOC(mapStateToProps, mapDispatchToProps) {
 
       render() {
         //container's true job is to inject mergedProps into the WrappedComponent
-        const mergedProps = stateAndDispatchMerge();
+        // replaced with this.selectorProps
+        // const mergedProps = stateAndDispatchMerge();
 
-        return React.createElement(WrappedComponent, mergedProps)
+        return React.createElement(WrappedComponent, this.selectorProps)
+        // get mergedProps from selector
       }
     }
+
+    // the mapping function is unoptimized
 
     // the context exposed to the Connect container itself
     Connect.contextTypes = {
