@@ -168,6 +168,10 @@ function makeStatefulSelector(selector, store) {
 }
 
 
+// at the top is makeStatefulSelector which wraps the original selector function and tracks
+// its result between runs and it has a flag shouldComponentUpdate which will be used in the
+// actual React lifecycle method to determine if re-render is necessary
+
 // the other job of the container component is to inject props into the wrappedComponent
 //these props are generated one of three ways.
 // 1.) ownProps, its own props received as JSX <Container prop1={abc} prop2={def} />
@@ -275,6 +279,8 @@ function connectHOC(mapStateToProps, mapDispatchToProps) {
       }
 
       render() {
+        const selector = this.selector;
+        selector.shouldComponentUpdate = false; // reset the flag of selector
         //container's true job is to inject mergedProps into the WrappedComponent
         // replaced with this.selectorProps
         // const mergedProps = stateAndDispatchMerge();
